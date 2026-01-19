@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package payment;
+
+service PaymentService {
+  rpc CreatePayment (CreatePaymentRequest) returns (PaymentResponse);
+  rpc GetPayment (GetPaymentRequest) returns (PaymentResponse);
+  rpc GetPaymentsByUser (GetPaymentsByUserRequest) returns (PaymentsResponse);
+  rpc ProcessRefund (ProcessRefundRequest) returns (PaymentResponse);
+}
+
+message CreatePaymentRequest {
+  string userId = 1;
+  double amount = 2;
+  string currency = 3;
+  string description = 4;
+  string paymentMethod = 5;
+}
+
+message GetPaymentRequest {
+  string id = 1;
+}
+
+message GetPaymentsByUserRequest {
+  string userId = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message ProcessRefundRequest {
+  string paymentId = 1;
+  double amount = 2;
+  string reason = 3;
+}
+
+message PaymentResponse {
+  string id = 1;
+  string userId = 2;
+  double amount = 3;
+  string currency = 4;
+  string status = 5;
+  string description = 6;
+  string paymentMethod = 7;
+  string createdAt = 8;
+  string updatedAt = 9;
+}
+
+message PaymentsResponse {
+  repeated PaymentResponse payments = 1;
+  int32 total = 2;
+}
