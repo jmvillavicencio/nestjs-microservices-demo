@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  // Email/Password Authentication
+  rpc Register (RegisterRequest) returns (AuthResponse);
+  rpc Login (LoginRequest) returns (AuthResponse);
+
+  // OAuth Authentication
+  rpc GoogleAuth (GoogleAuthRequest) returns (AuthResponse);
+  rpc AppleAuth (AppleAuthRequest) returns (AuthResponse);
+
+  // Token Management
+  rpc RefreshToken (RefreshTokenRequest) returns (AuthResponse);
+  rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc Logout (LogoutRequest) returns (LogoutResponse);
+
+  // Password Management
+  rpc ForgotPassword (ForgotPasswordRequest) returns (ForgotPasswordResponse);
+  rpc ResetPassword (ResetPasswordRequest) returns (ResetPasswordResponse);
+  rpc ChangePassword (ChangePasswordRequest) returns (ChangePasswordResponse);
+}
+
+// Registration & Login
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string name = 3;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+// OAuth
+message GoogleAuthRequest {
+  string idToken = 1;
+}
+
+message AppleAuthRequest {
+  string identityToken = 1;
+  string authorizationCode = 2;
+  optional string firstName = 3;
+  optional string lastName = 4;
+}
+
+// Token Management
+message RefreshTokenRequest {
+  string refreshToken = 1;
+}
+
+message ValidateTokenRequest {
+  string accessToken = 1;
+}
+
+message LogoutRequest {
+  string userId = 1;
+  string refreshToken = 2;
+}
+
+// Password Management
+message ForgotPasswordRequest {
+  string email = 1;
+}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string newPassword = 2;
+}
+
+message ChangePasswordRequest {
+  string userId = 1;
+  string currentPassword = 2;
+  string newPassword = 3;
+}
+
+// Responses
+message AuthResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+  UserInfo user = 3;
+  int64 expiresIn = 4;
+}
+
+message UserInfo {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string provider = 4;
+  string createdAt = 5;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  optional UserInfo user = 2;
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message ForgotPasswordResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ResetPasswordResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ChangePasswordResponse {
+  bool success = 1;
+  string message = 2;
+}

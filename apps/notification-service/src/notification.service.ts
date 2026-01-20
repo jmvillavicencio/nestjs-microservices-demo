@@ -8,6 +8,10 @@ import {
   PaymentCompletedEvent,
   PaymentFailedEvent,
   PaymentRefundedEvent,
+  UserRegisteredEvent,
+  PasswordResetRequestedEvent,
+  PasswordResetCompletedEvent,
+  PasswordChangedEvent,
 } from '@app/common';
 
 @Injectable()
@@ -77,5 +81,30 @@ export class NotificationService {
       event.id,
     );
     this.logger.log(`Refund notification sent for payment: ${event.id}`);
+  }
+
+  // Auth Event Handlers
+  async handleAuthUserRegistered(event: UserRegisteredEvent): Promise<void> {
+    this.logger.log(`Processing auth.user.registered event for user: ${event.id}`);
+    await this.emailService.sendAuthWelcomeEmail(event.email, event.name, event.provider);
+    this.logger.log(`Auth welcome email sent to: ${event.email}`);
+  }
+
+  async handlePasswordResetRequested(event: PasswordResetRequestedEvent): Promise<void> {
+    this.logger.log(`Processing password reset request for user: ${event.userId}`);
+    await this.emailService.sendPasswordResetEmail(event.email, event.token, event.expiresAt);
+    this.logger.log(`Password reset email sent to: ${event.email}`);
+  }
+
+  async handlePasswordResetCompleted(event: PasswordResetCompletedEvent): Promise<void> {
+    this.logger.log(`Processing password reset completed for user: ${event.userId}`);
+    await this.emailService.sendPasswordResetConfirmation(event.email);
+    this.logger.log(`Password reset confirmation sent to: ${event.email}`);
+  }
+
+  async handlePasswordChanged(event: PasswordChangedEvent): Promise<void> {
+    this.logger.log(`Processing password changed for user: ${event.userId}`);
+    await this.emailService.sendPasswordChangedNotification(event.email);
+    this.logger.log(`Password changed notification sent to: ${event.email}`);
   }
 }

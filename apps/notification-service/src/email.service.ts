@@ -163,4 +163,96 @@ export class EmailService {
       `,
     });
   }
+
+  // Auth-related emails
+  async sendAuthWelcomeEmail(email: string, name: string, provider: string): Promise<void> {
+    const providerText = provider === 'email'
+      ? 'your email and password'
+      : provider === 'google'
+        ? 'your Google account'
+        : 'your Apple account';
+
+    await this.sendEmail({
+      to: email,
+      subject: 'Welcome to Our Platform!',
+      html: `
+        <h1>Welcome, ${name}!</h1>
+        <p>Your account has been successfully created using ${providerText}.</p>
+        <p>You can now access all features of our platform.</p>
+        <br>
+        <p>Here's what you can do next:</p>
+        <ul>
+          <li>Complete your profile</li>
+          <li>Explore our features</li>
+          <li>Start using our services</li>
+        </ul>
+        <br>
+        <p>Best regards,</p>
+        <p>The Team</p>
+      `,
+    });
+  }
+
+  async sendPasswordResetEmail(email: string, token: string, expiresAt: string): Promise<void> {
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+
+    await this.sendEmail({
+      to: email,
+      subject: 'Password Reset Request',
+      html: `
+        <h1>Password Reset Request</h1>
+        <p>We received a request to reset your password.</p>
+        <p>Click the link below to reset your password:</p>
+        <div style="margin: 20px 0;">
+          <a href="${resetLink}" style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
+            Reset Password
+          </a>
+        </div>
+        <p style="color: #666; font-size: 14px;">
+          This link will expire at ${new Date(expiresAt).toLocaleString()}.
+        </p>
+        <p style="color: #666; font-size: 14px;">
+          If you didn't request this password reset, you can safely ignore this email.
+        </p>
+        <br>
+        <p>Best regards,</p>
+        <p>The Team</p>
+      `,
+    });
+  }
+
+  async sendPasswordResetConfirmation(email: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Password Reset Successful',
+      html: `
+        <h1>Password Reset Successful</h1>
+        <p>Your password has been successfully reset.</p>
+        <p>You can now log in with your new password.</p>
+        <p style="color: #d9534f; margin-top: 20px;">
+          <strong>Security Notice:</strong> If you did not make this change, please contact our support team immediately.
+        </p>
+        <br>
+        <p>Best regards,</p>
+        <p>The Team</p>
+      `,
+    });
+  }
+
+  async sendPasswordChangedNotification(email: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Password Changed',
+      html: `
+        <h1>Password Changed</h1>
+        <p>Your password has been successfully changed.</p>
+        <p style="color: #d9534f; margin-top: 20px;">
+          <strong>Security Notice:</strong> If you did not make this change, please reset your password immediately and contact our support team.
+        </p>
+        <br>
+        <p>Best regards,</p>
+        <p>The Team</p>
+      `,
+    });
+  }
 }

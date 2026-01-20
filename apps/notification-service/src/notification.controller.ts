@@ -4,6 +4,7 @@ import { NotificationService } from './notification.service';
 import {
   USER_EVENTS,
   PAYMENT_EVENTS,
+  AUTH_EVENTS,
   UserCreatedEvent,
   UserUpdatedEvent,
   UserDeletedEvent,
@@ -11,6 +12,10 @@ import {
   PaymentCompletedEvent,
   PaymentFailedEvent,
   PaymentRefundedEvent,
+  UserRegisteredEvent,
+  PasswordResetRequestedEvent,
+  PasswordResetCompletedEvent,
+  PasswordChangedEvent,
 } from '@app/common';
 
 @Controller()
@@ -124,6 +129,71 @@ export class NotificationController {
 
     try {
       await this.notificationService.handlePaymentRefunded(data);
+      channel.ack(originalMsg);
+    } catch (error) {
+      channel.nack(originalMsg, false, true);
+    }
+  }
+
+  // Auth Events
+  @EventPattern(AUTH_EVENTS.USER_REGISTERED)
+  async handleAuthUserRegistered(
+    @Payload() data: UserRegisteredEvent,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
+    try {
+      await this.notificationService.handleAuthUserRegistered(data);
+      channel.ack(originalMsg);
+    } catch (error) {
+      channel.nack(originalMsg, false, true);
+    }
+  }
+
+  @EventPattern(AUTH_EVENTS.PASSWORD_RESET_REQUESTED)
+  async handlePasswordResetRequested(
+    @Payload() data: PasswordResetRequestedEvent,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
+    try {
+      await this.notificationService.handlePasswordResetRequested(data);
+      channel.ack(originalMsg);
+    } catch (error) {
+      channel.nack(originalMsg, false, true);
+    }
+  }
+
+  @EventPattern(AUTH_EVENTS.PASSWORD_RESET_COMPLETED)
+  async handlePasswordResetCompleted(
+    @Payload() data: PasswordResetCompletedEvent,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
+    try {
+      await this.notificationService.handlePasswordResetCompleted(data);
+      channel.ack(originalMsg);
+    } catch (error) {
+      channel.nack(originalMsg, false, true);
+    }
+  }
+
+  @EventPattern(AUTH_EVENTS.PASSWORD_CHANGED)
+  async handlePasswordChanged(
+    @Payload() data: PasswordChangedEvent,
+    @Ctx() context: RmqContext,
+  ): Promise<void> {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
+    try {
+      await this.notificationService.handlePasswordChanged(data);
       channel.ack(originalMsg);
     } catch (error) {
       channel.nack(originalMsg, false, true);

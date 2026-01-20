@@ -53,6 +53,26 @@ services:
     networks:
       - microservices-network
 
+  # Auth Service (gRPC)
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./apps/auth-service/Dockerfile
+    container_name: auth-service
+    ports:
+      - "50053:50053"
+    environment:
+      GRPC_URL: 0.0.0.0:50053
+      RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      GOOGLE_CLIENT_ID: your-google-client-id
+      APPLE_CLIENT_ID: your-apple-client-id
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
   # Notification Service (RabbitMQ Consumer)
   notification-service:
     build:
@@ -80,9 +100,11 @@ services:
       PORT: 3000
       USER_SERVICE_URL: user-service:50051
       PAYMENT_SERVICE_URL: payment-service:50052
+      AUTH_SERVICE_URL: auth-service:50053
     depends_on:
       - user-service
       - payment-service
+      - auth-service
     networks:
       - microservices-network
 

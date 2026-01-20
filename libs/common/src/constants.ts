@@ -2,6 +2,7 @@ export const SERVICES = {
   USER_SERVICE: 'USER_SERVICE',
   PAYMENT_SERVICE: 'PAYMENT_SERVICE',
   NOTIFICATION_SERVICE: 'NOTIFICATION_SERVICE',
+  AUTH_SERVICE: 'AUTH_SERVICE',
 } as const;
 
 export const RABBITMQ_QUEUES = {
@@ -11,4 +12,5 @@ export const RABBITMQ_QUEUES = {
 export const GRPC_PACKAGES = {
   USER: 'user',
   PAYMENT: 'payment',
+  AUTH: 'auth',
 } as const;
