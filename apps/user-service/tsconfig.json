@@ -21,7 +21,9 @@
       "@app/common": ["../../libs/common/src"],
       "@app/common/*": ["../../libs/common/src/*"],
       "@app/proto": ["../../libs/proto/src"],
-      "@app/proto/*": ["../../libs/proto/src/*"]
+      "@app/proto/*": ["../../libs/proto/src/*"],
+      "@app/prisma": ["../../libs/prisma/src"],
+      "@app/prisma/*": ["../../libs/prisma/src/*"]
     }
   }
 }

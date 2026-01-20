@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { Injectable, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import {
   CreateUserRequest,
@@ -13,66 +12,53 @@ import {
 } from '@app/proto';
 import { RabbitMQService } from './rabbitmq.service';
 import { USER_EVENTS, UserCreatedEvent, UserUpdatedEvent, UserDeletedEvent } from '@app/common';
+import { PrismaService } from '@app/prisma';
+import { User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  password: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+/**
+ * Service responsible for user management operations.
+ * Handles CRUD operations for users with PostgreSQL persistence via Prisma.
+ */
 @Injectable()
 export class UserService {
-  private users: Map<string, User> = new Map();
+  private readonly logger = new Logger(UserService.name);
 
-  constructor(private readonly rabbitMQService: RabbitMQService) {
-    // Seed some demo users
-    this.seedUsers();
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rabbitMQService: RabbitMQService,
+  ) {}
 
-  private seedUsers(): void {
-    const demoUsers = [
-      { email: 'john@example.com', name: 'John Doe', password: 'password123' },
-      { email: 'jane@example.com', name: 'Jane Smith', password: 'password456' },
-    ];
-
-    demoUsers.forEach((user) => {
-      const id = uuidv4();
-      const now = new Date();
-      this.users.set(id, {
-        id,
-        ...user,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-  }
-
+  /**
+   * Creates a new user in the system.
+   * @param data - The user creation request containing email, name, and password
+   * @returns The created user response
+   * @throws RpcException if a user with the given email already exists
+   */
   async createUser(data: CreateUserRequest): Promise<UserResponse> {
-    const existingUser = Array.from(this.users.values()).find(
-      (u) => u.email === data.email,
-    );
+    this.logger.log(`Creating user with email: ${data.email}`);
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
 
     if (existingUser) {
+      this.logger.warn(`User creation failed: email ${data.email} already exists`);
       throw new RpcException('User with this email already exists');
     }
 
-    const id = uuidv4();
-    const now = new Date();
-    const user: User = {
-      id,
-      email: data.email,
-      name: data.name,
-      password: data.password,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    this.users.set(id, user);
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name,
+        password: hashedPassword,
+      },
+    });
 
-    // Emit user created event
+    this.logger.log(`User created successfully: ${user.id}`);
+
     const event: UserCreatedEvent = {
       id: user.id,
       email: user.email,
@@ -84,55 +70,92 @@ export class UserService {
     return this.toResponse(user);
   }
 
+  /**
+   * Retrieves a user by their unique identifier.
+   * @param data - The request containing the user ID
+   * @returns The user response
+   * @throws RpcException if the user is not found
+   */
   async getUser(data: GetUserRequest): Promise<UserResponse> {
-    const user = this.users.get(data.id);
+    this.logger.log(`Fetching user with id: ${data.id}`);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: data.id },
+    });
 
     if (!user) {
+      this.logger.warn(`User not found: ${data.id}`);
       throw new RpcException('User not found');
     }
 
     return this.toResponse(user);
   }
 
+  /**
+   * Retrieves a paginated list of users.
+   * @param data - The request containing pagination parameters (page, limit)
+   * @returns A response containing the list of users and total count
+   */
   async getUsers(data: GetUsersRequest): Promise<UsersResponse> {
     const page = data.page || 1;
     const limit = data.limit || 10;
     const skip = (page - 1) * limit;
 
-    const allUsers = Array.from(this.users.values());
-    const paginatedUsers = allUsers.slice(skip, skip + limit);
+    this.logger.log(`Fetching users - page: ${page}, limit: ${limit}`);
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count(),
+    ]);
 
     return {
-      users: paginatedUsers.map((u) => this.toResponse(u)),
-      total: allUsers.length,
+      users: users.map((u) => this.toResponse(u)),
+      total,
     };
   }
 
+  /**
+   * Updates an existing user's information.
+   * @param data - The update request containing user ID and fields to update
+   * @returns The updated user response
+   * @throws RpcException if the user is not found or email is already in use
+   */
   async updateUser(data: UpdateUserRequest): Promise<UserResponse> {
-    const user = this.users.get(data.id);
+    this.logger.log(`Updating user: ${data.id}`);
 
-    if (!user) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: data.id },
+    });
+
+    if (!existingUser) {
+      this.logger.warn(`Update failed: user ${data.id} not found`);
       throw new RpcException('User not found');
     }
 
-    if (data.email) {
-      const existingUser = Array.from(this.users.values()).find(
-        (u) => u.email === data.email && u.id !== data.id,
-      );
-      if (existingUser) {
+    if (data.email && data.email !== existingUser.email) {
+      const emailInUse = await this.prisma.user.findUnique({
+        where: { email: data.email },
+      });
+      if (emailInUse) {
+        this.logger.warn(`Update failed: email ${data.email} already in use`);
         throw new RpcException('Email already in use');
       }
-      user.email = data.email;
     }
 
-    if (data.name) {
-      user.name = data.name;
-    }
+    const user = await this.prisma.user.update({
+      where: { id: data.id },
+      data: {
+        ...(data.email && { email: data.email }),
+        ...(data.name && { name: data.name }),
+      },
+    });
 
-    user.updatedAt = new Date();
-    this.users.set(data.id, user);
+    this.logger.log(`User updated successfully: ${user.id}`);
 
-    // Emit user updated event
     const event: UserUpdatedEvent = {
       id: user.id,
       email: user.email,
@@ -144,16 +167,30 @@ export class UserService {
     return this.toResponse(user);
   }
 
+  /**
+   * Deletes a user from the system.
+   * @param data - The delete request containing the user ID
+   * @returns A response indicating success
+   * @throws RpcException if the user is not found
+   */
   async deleteUser(data: DeleteUserRequest): Promise<DeleteUserResponse> {
-    const user = this.users.get(data.id);
+    this.logger.log(`Deleting user: ${data.id}`);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: data.id },
+    });
 
     if (!user) {
+      this.logger.warn(`Delete failed: user ${data.id} not found`);
       throw new RpcException('User not found');
     }
 
-    this.users.delete(data.id);
+    await this.prisma.user.delete({
+      where: { id: data.id },
+    });
 
-    // Emit user deleted event
+    this.logger.log(`User deleted successfully: ${data.id}`);
+
     const event: UserDeletedEvent = {
       id: data.id,
       deletedAt: new Date().toISOString(),
@@ -163,6 +200,11 @@ export class UserService {
     return { success: true };
   }
 
+  /**
+   * Converts a User entity to a UserResponse DTO.
+   * @param user - The User entity from the database
+   * @returns The formatted user response
+   */
   private toResponse(user: User): UserResponse {
     return {
       id: user.id,

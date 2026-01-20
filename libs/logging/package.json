@@ -1,0 +1,13 @@
+{
+  "name": "@app/logging",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"No tests for logging library\""
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.3.0",
+    "winston": "^3.11.0",
+    "nest-winston": "^1.9.4"
+  }
+}

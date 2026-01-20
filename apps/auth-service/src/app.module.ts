@@ -11,9 +11,15 @@ import { UserRepository } from './repositories/user.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { RabbitMQService } from './rabbitmq.service';
 import { SERVICES, RABBITMQ_QUEUES } from '@app/common';
+import { PrismaModule } from '@app/prisma';
 
+/**
+ * Root module for the Authentication Service.
+ * Configures JWT, Prisma for database access, and RabbitMQ for event publishing.
+ */
 @Module({
   imports: [
+    PrismaModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key',
       signOptions: { expiresIn: '15m' },

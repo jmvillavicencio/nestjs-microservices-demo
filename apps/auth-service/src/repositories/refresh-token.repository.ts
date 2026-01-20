@@ -1,84 +1,117 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '@app/prisma';
+import { RefreshToken } from '@prisma/client';
 
-export interface RefreshToken {
-  token: string;
-  userId: string;
-  expiresAt: Date;
-  revoked: boolean;
-  createdAt: Date;
-}
-
+/**
+ * Data required to create a new refresh token.
+ */
 export interface CreateRefreshTokenData {
   token: string;
   userId: string;
   expiresAt: Date;
 }
 
+export { RefreshToken };
+
+/**
+ * Repository for managing refresh tokens in the database.
+ * Provides operations for token creation, validation, and revocation.
+ */
 @Injectable()
 export class RefreshTokenRepository {
-  private tokens: Map<string, RefreshToken> = new Map();
-  private userTokensIndex: Map<string, Set<string>> = new Map();
+  private readonly logger = new Logger(RefreshTokenRepository.name);
 
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Creates a new refresh token in the database.
+   * @param data - The token data to create
+   * @returns The created refresh token
+   */
   async create(data: CreateRefreshTokenData): Promise<RefreshToken> {
-    const refreshToken: RefreshToken = {
-      token: data.token,
-      userId: data.userId,
-      expiresAt: data.expiresAt,
-      revoked: false,
-      createdAt: new Date(),
-    };
+    this.logger.log(`Creating refresh token for user: ${data.userId}`);
 
-    this.tokens.set(data.token, refreshToken);
-
-    // Update user tokens index
-    if (!this.userTokensIndex.has(data.userId)) {
-      this.userTokensIndex.set(data.userId, new Set());
-    }
-    this.userTokensIndex.get(data.userId)!.add(data.token);
+    const refreshToken = await this.prisma.refreshToken.create({
+      data: {
+        token: data.token,
+        userId: data.userId,
+        expiresAt: data.expiresAt,
+        revoked: false,
+      },
+    });
 
     return refreshToken;
   }
 
+  /**
+   * Finds a refresh token by its token string.
+   * @param token - The token string to search for
+   * @returns The refresh token or null if not found
+   */
   async findByToken(token: string): Promise<RefreshToken | null> {
-    return this.tokens.get(token) || null;
+    return this.prisma.refreshToken.findUnique({
+      where: { token },
+    });
   }
 
+  /**
+   * Deletes a refresh token from the database.
+   * @param token - The token string to delete
+   */
   async delete(token: string): Promise<void> {
-    const refreshToken = this.tokens.get(token);
-    if (refreshToken) {
-      this.userTokensIndex.get(refreshToken.userId)?.delete(token);
-      this.tokens.delete(token);
-    }
+    this.logger.log('Deleting refresh token');
+
+    await this.prisma.refreshToken.delete({
+      where: { token },
+    }).catch(() => {
+      // Token may already be deleted
+    });
   }
 
+  /**
+   * Revokes a refresh token, marking it as invalid.
+   * @param token - The token string to revoke
+   */
   async revoke(token: string): Promise<void> {
-    const refreshToken = this.tokens.get(token);
-    if (refreshToken) {
-      refreshToken.revoked = true;
-      this.tokens.set(token, refreshToken);
-    }
+    this.logger.log('Revoking refresh token');
+
+    await this.prisma.refreshToken.update({
+      where: { token },
+      data: { revoked: true },
+    }).catch(() => {
+      // Token may not exist
+    });
   }
 
+  /**
+   * Revokes all refresh tokens for a specific user.
+   * Useful for security operations like password changes.
+   * @param userId - The user's unique ID
+   */
   async revokeAllForUser(userId: string): Promise<void> {
-    const userTokens = this.userTokensIndex.get(userId);
-    if (userTokens) {
-      for (const token of userTokens) {
-        const refreshToken = this.tokens.get(token);
-        if (refreshToken) {
-          refreshToken.revoked = true;
-          this.tokens.set(token, refreshToken);
-        }
-      }
-    }
+    this.logger.log(`Revoking all refresh tokens for user: ${userId}`);
+
+    await this.prisma.refreshToken.updateMany({
+      where: { userId },
+      data: { revoked: true },
+    });
   }
 
+  /**
+   * Removes all expired tokens from the database.
+   * Should be run periodically to clean up old tokens.
+   */
   async cleanupExpired(): Promise<void> {
-    const now = new Date();
-    for (const [token, refreshToken] of this.tokens) {
-      if (refreshToken.expiresAt < now) {
-        this.userTokensIndex.get(refreshToken.userId)?.delete(token);
-        this.tokens.delete(token);
-      }
-    }
+    this.logger.log('Cleaning up expired refresh tokens');
+
+    const result = await this.prisma.refreshToken.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date(),
+        },
+      },
+    });
+
+    this.logger.log(`Cleaned up ${result.count} expired tokens`);
   }
 }

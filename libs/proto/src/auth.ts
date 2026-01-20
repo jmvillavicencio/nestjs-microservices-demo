@@ -92,6 +92,15 @@ export interface ChangePasswordResponse {
   message: string;
 }
 
+// Profile
+export interface GetProfileRequest {
+  userId: string;
+}
+
+export interface GetProfileResponse {
+  user: UserInfo;
+}
+
 export interface AuthServiceClient {
   register(request: RegisterRequest): any;
   login(request: LoginRequest): any;
@@ -103,6 +112,7 @@ export interface AuthServiceClient {
   forgotPassword(request: ForgotPasswordRequest): any;
   resetPassword(request: ResetPasswordRequest): any;
   changePassword(request: ChangePasswordRequest): any;
+  getProfile(request: GetProfileRequest): any;
 }
 
 export const AUTH_SERVICE_NAME = 'AuthService';
