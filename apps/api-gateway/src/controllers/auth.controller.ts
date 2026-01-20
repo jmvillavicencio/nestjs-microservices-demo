@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   Inject,
   OnModuleInit,
@@ -20,6 +21,7 @@ import {
   ResetPasswordResponse,
   ValidateTokenResponse,
   ChangePasswordResponse,
+  GetProfileResponse,
 } from '@app/proto';
 import {
   RegisterDto,
@@ -32,6 +34,7 @@ import {
   ChangePasswordDto,
   AuthResponseDto,
   MessageResponseDto,
+  UserInfoDto,
 } from '../dto/auth.dto';
 
 @ApiTags('auth')
@@ -265,6 +268,47 @@ export class AuthController implements OnModuleInit {
       }
       throw new HttpException(
         error.message || 'Password change failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current authenticated user profile' })
+  @ApiResponse({ status: 200, description: 'User profile retrieved successfully', type: UserInfoDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid or missing token' })
+  async getProfile(@Headers('authorization') authHeader: string): Promise<UserInfoDto> {
+    try {
+      const token = authHeader?.replace('Bearer ', '');
+      if (!token) {
+        throw new HttpException('Authorization required', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Validate token and get user ID
+      const validation = await firstValueFrom(
+        this.authService.validateToken({ accessToken: token }),
+      ) as ValidateTokenResponse;
+
+      if (!validation.valid || !validation.user) {
+        throw new HttpException('Invalid or expired token', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Fetch fresh profile data
+      const profile = await firstValueFrom(
+        this.authService.getProfile({ userId: validation.user.id }),
+      ) as GetProfileResponse;
+
+      return profile.user;
+    } catch (error: any) {
+      if (error.status) {
+        throw error;
+      }
+      if (error.message?.includes('not found')) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        error.message || 'Failed to get profile',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

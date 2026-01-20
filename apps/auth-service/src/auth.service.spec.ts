@@ -291,6 +291,41 @@ describe('AuthService', () => {
     });
   });
 
+  describe('getProfile', () => {
+    const mockUser = {
+      id: 'user-123',
+      email: 'test@example.com',
+      name: 'Test User',
+      password: 'hashed_password',
+      provider: AuthProvider.email,
+      providerId: null,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should return user profile successfully', async () => {
+      mockUserRepository.findById.mockResolvedValue(mockUser);
+
+      const result = await service.getProfile({ userId: 'user-123' });
+
+      expect(result.user).toBeDefined();
+      expect(result.user.id).toBe(mockUser.id);
+      expect(result.user.email).toBe(mockUser.email);
+      expect(result.user.name).toBe(mockUser.name);
+      expect(result.user.provider).toBe(mockUser.provider);
+    });
+
+    it('should throw RpcException if user not found', async () => {
+      mockUserRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getProfile({ userId: 'non-existent' }),
+      ).rejects.toThrow(RpcException);
+    });
+  });
+
   describe('forgotPassword', () => {
     const mockUser = {
       id: 'user-123',

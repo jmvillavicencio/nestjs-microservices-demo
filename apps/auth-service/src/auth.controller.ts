@@ -12,12 +12,14 @@ import {
   ForgotPasswordRequest,
   ResetPasswordRequest,
   ChangePasswordRequest,
+  GetProfileRequest,
   AuthResponse,
   ValidateTokenResponse,
   LogoutResponse,
   ForgotPasswordResponse,
   ResetPasswordResponse,
   ChangePasswordResponse,
+  GetProfileResponse,
   AUTH_SERVICE_NAME,
 } from '@app/proto';
 
@@ -73,5 +75,10 @@ export class AuthController {
   @GrpcMethod(AUTH_SERVICE_NAME, 'ChangePassword')
   async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
     return this.authService.changePassword(data);
+  }
+
+  @GrpcMethod(AUTH_SERVICE_NAME, 'GetProfile')
+  async getProfile(data: GetProfileRequest): Promise<GetProfileResponse> {
+    return this.authService.getProfile(data);
   }
 }

@@ -18,12 +18,14 @@ import {
   ForgotPasswordRequest,
   ResetPasswordRequest,
   ChangePasswordRequest,
+  GetProfileRequest,
   AuthResponse,
   ValidateTokenResponse,
   LogoutResponse,
   ForgotPasswordResponse,
   ResetPasswordResponse,
   ChangePasswordResponse,
+  GetProfileResponse,
   UserInfo,
 } from '@app/proto';
 import { AUTH_EVENTS } from '@app/common';
@@ -301,6 +303,27 @@ export class AuthService {
     this.logger.log('Processing logout');
     await this.tokenService.revokeRefreshToken(data.refreshToken);
     return { success: true };
+  }
+
+  /**
+   * Retrieves the profile of the currently authenticated user.
+   * @param data - Get profile request containing the user ID
+   * @returns Profile response with user information
+   * @throws RpcException if user is not found
+   */
+  async getProfile(data: GetProfileRequest): Promise<GetProfileResponse> {
+    this.logger.log(`Fetching profile for user: ${data.userId}`);
+
+    const user = await this.userRepository.findById(data.userId);
+
+    if (!user) {
+      this.logger.warn(`Profile not found for user: ${data.userId}`);
+      throw new RpcException('User not found');
+    }
+
+    return {
+      user: this.toUserInfo(user),
+    };
   }
 
   /**

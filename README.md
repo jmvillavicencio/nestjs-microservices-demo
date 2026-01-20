@@ -215,6 +215,7 @@ npm run start:dev:api-gateway
 | POST | `/api/auth/forgot-password` | Request password reset |
 | POST | `/api/auth/reset-password` | Reset password with token |
 | POST | `/api/auth/change-password` | Change password |
+| GET | `/api/auth/me` | Get current user profile |
 | GET | `/api/auth/validate` | Validate access token |
 
 ### Health
