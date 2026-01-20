@@ -1,5 +1,3 @@
-import { Observable } from 'rxjs';
-
 export interface CreateUserRequest {
   email: string;
   name: string;
@@ -43,11 +41,11 @@ export interface DeleteUserResponse {
 }
 
 export interface UserServiceClient {
-  createUser(request: CreateUserRequest): Observable<UserResponse>;
-  getUser(request: GetUserRequest): Observable<UserResponse>;
-  getUsers(request: GetUsersRequest): Observable<UsersResponse>;
-  updateUser(request: UpdateUserRequest): Observable<UserResponse>;
-  deleteUser(request: DeleteUserRequest): Observable<DeleteUserResponse>;
+  createUser(request: CreateUserRequest): any;
+  getUser(request: GetUserRequest): any;
+  getUsers(request: GetUsersRequest): any;
+  updateUser(request: UpdateUserRequest): any;
+  deleteUser(request: DeleteUserRequest): any;
 }
 
 export const USER_SERVICE_NAME = 'UserService';

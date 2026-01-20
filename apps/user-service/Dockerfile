@@ -2,17 +2,21 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
+# Copy libs first (needed for build)
 COPY libs ./libs
 COPY proto ./proto
-COPY apps/user-service ./apps/user-service
 
-# Install dependencies
-RUN npm install --workspace=apps/user-service
+# Copy app package.json and install
+WORKDIR /app/apps/user-service
+COPY apps/user-service/package*.json ./
+COPY apps/user-service/tsconfig.json ./
+COPY apps/user-service/nest-cli.json ./
+RUN npm install
+
+# Copy source code
+COPY apps/user-service/src ./src
 
 # Build the application
-WORKDIR /app/apps/user-service
 RUN npm run build
 
 # Production stage
@@ -23,8 +27,8 @@ WORKDIR /app
 # Copy necessary files
 COPY --from=builder /app/apps/user-service/dist ./dist
 COPY --from=builder /app/apps/user-service/node_modules ./node_modules
-COPY --from=builder /app/proto ./proto
+COPY proto ./proto
 
 EXPOSE 50051
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/apps/user-service/src/main.js"]

@@ -1,5 +1,3 @@
-import { Observable } from 'rxjs';
-
 export interface CreatePaymentRequest {
   userId: string;
   amount: number;
@@ -42,10 +40,10 @@ export interface PaymentsResponse {
 }
 
 export interface PaymentServiceClient {
-  createPayment(request: CreatePaymentRequest): Observable<PaymentResponse>;
-  getPayment(request: GetPaymentRequest): Observable<PaymentResponse>;
-  getPaymentsByUser(request: GetPaymentsByUserRequest): Observable<PaymentsResponse>;
-  processRefund(request: ProcessRefundRequest): Observable<PaymentResponse>;
+  createPayment(request: CreatePaymentRequest): any;
+  getPayment(request: GetPaymentRequest): any;
+  getPaymentsByUser(request: GetPaymentsByUserRequest): any;
+  processRefund(request: ProcessRefundRequest): any;
 }
 
 export const PAYMENT_SERVICE_NAME = 'PaymentService';

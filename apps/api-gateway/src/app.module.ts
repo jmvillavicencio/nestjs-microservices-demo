@@ -14,7 +14,7 @@ import { SERVICES } from '@app/common';
         transport: Transport.GRPC,
         options: {
           package: 'user',
-          protoPath: join(__dirname, '../../../proto/user.proto'),
+          protoPath: join(process.cwd(), 'proto/user.proto'),
           url: process.env.USER_SERVICE_URL || 'localhost:50051',
         },
       },
@@ -23,7 +23,7 @@ import { SERVICES } from '@app/common';
         transport: Transport.GRPC,
         options: {
           package: 'payment',
-          protoPath: join(__dirname, '../../../proto/payment.proto'),
+          protoPath: join(process.cwd(), 'proto/payment.proto'),
           url: process.env.PAYMENT_SERVICE_URL || 'localhost:50052',
         },
       },

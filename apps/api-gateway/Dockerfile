@@ -2,17 +2,21 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
+# Copy libs first (needed for build)
 COPY libs ./libs
 COPY proto ./proto
-COPY apps/api-gateway ./apps/api-gateway
 
-# Install dependencies
-RUN npm install --workspace=apps/api-gateway
+# Copy app package.json and install
+WORKDIR /app/apps/api-gateway
+COPY apps/api-gateway/package*.json ./
+COPY apps/api-gateway/tsconfig.json ./
+COPY apps/api-gateway/nest-cli.json ./
+RUN npm install
+
+# Copy source code
+COPY apps/api-gateway/src ./src
 
 # Build the application
-WORKDIR /app/apps/api-gateway
 RUN npm run build
 
 # Production stage
@@ -23,8 +27,8 @@ WORKDIR /app
 # Copy necessary files
 COPY --from=builder /app/apps/api-gateway/dist ./dist
 COPY --from=builder /app/apps/api-gateway/node_modules ./node_modules
-COPY --from=builder /app/proto ./proto
+COPY proto ./proto
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/apps/api-gateway/src/main.js"]
