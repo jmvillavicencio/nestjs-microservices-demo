@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
 import { TokenService, TokenPayload } from './services/token.service';
 import { PasswordService } from './services/password.service';
 import { GoogleAuthService } from './services/google-auth.service';
@@ -19,6 +18,7 @@ import {
   ResetPasswordRequest,
   ChangePasswordRequest,
   GetProfileRequest,
+  CheckEmailRequest,
   AuthResponse,
   ValidateTokenResponse,
   LogoutResponse,
@@ -26,9 +26,10 @@ import {
   ResetPasswordResponse,
   ChangePasswordResponse,
   GetProfileResponse,
+  CheckEmailResponse,
   UserInfo,
 } from '@app/proto';
-import { AUTH_EVENTS } from '@app/common';
+import { AUTH_EVENTS, AppErrors } from '@app/common';
 
 /**
  * Service responsible for authentication operations.
@@ -60,12 +61,12 @@ export class AuthService {
     const existingUser = await this.userRepository.findByEmail(data.email);
     if (existingUser) {
       this.logger.warn(`Registration failed: email ${data.email} already exists`);
-      throw new RpcException('User with this email already exists');
+      throw AppErrors.userAlreadyExists(data.email);
     }
 
     const passwordValidation = this.passwordService.validatePasswordStrength(data.password);
     if (!passwordValidation.valid) {
-      throw new RpcException(passwordValidation.message || 'Invalid password');
+      throw AppErrors.passwordTooWeak(passwordValidation.message);
     }
 
     const hashedPassword = await this.passwordService.hash(data.password);
@@ -103,17 +104,17 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn(`Login failed: user ${data.email} not found`);
-      throw new RpcException('Invalid email or password');
+      throw AppErrors.invalidCredentials();
     }
 
     if (user.provider !== AuthProvider.email || !user.password) {
-      throw new RpcException(`Please sign in with ${user.provider}`);
+      throw AppErrors.oauthProviderMismatch(user.provider);
     }
 
     const isPasswordValid = await this.passwordService.compare(data.password, user.password);
     if (!isPasswordValid) {
       this.logger.warn(`Login failed: invalid password for ${data.email}`);
-      throw new RpcException('Invalid email or password');
+      throw AppErrors.invalidCredentials();
     }
 
     const tokens = await this.generateAuthResponse(user);
@@ -142,11 +143,11 @@ export class AuthService {
     const googleUser = await this.googleAuthService.verifyIdToken(data.idToken);
 
     if (!googleUser) {
-      throw new RpcException('Invalid Google token');
+      throw AppErrors.googleTokenInvalid();
     }
 
     if (!googleUser.emailVerified) {
-      throw new RpcException('Google email not verified');
+      throw AppErrors.googleEmailNotVerified();
     }
 
     let user = await this.userRepository.findByProvider(AuthProvider.google, googleUser.id);
@@ -154,7 +155,7 @@ export class AuthService {
     if (!user) {
       const existingUser = await this.userRepository.findByEmail(googleUser.email);
       if (existingUser) {
-        throw new RpcException('An account with this email already exists. Please sign in with your original method.');
+        throw AppErrors.oauthProviderMismatch(existingUser.provider);
       }
 
       user = await this.userRepository.create({
@@ -199,7 +200,7 @@ export class AuthService {
     const appleUser = await this.appleAuthService.verifyIdentityToken(data.identityToken);
 
     if (!appleUser) {
-      throw new RpcException('Invalid Apple token');
+      throw AppErrors.appleTokenInvalid();
     }
 
     let user = await this.userRepository.findByProvider(AuthProvider.apple, appleUser.id);
@@ -208,7 +209,7 @@ export class AuthService {
       if (appleUser.email) {
         const existingUser = await this.userRepository.findByEmail(appleUser.email);
         if (existingUser) {
-          throw new RpcException('An account with this email already exists. Please sign in with your original method.');
+          throw AppErrors.oauthProviderMismatch(existingUser.provider);
         }
       }
 
@@ -257,12 +258,12 @@ export class AuthService {
     const userId = await this.tokenService.validateRefreshToken(data.refreshToken);
 
     if (!userId) {
-      throw new RpcException('Invalid or expired refresh token');
+      throw AppErrors.refreshTokenInvalid();
     }
 
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new RpcException('User not found');
+      throw AppErrors.userNotFound(userId);
     }
 
     await this.tokenService.revokeRefreshToken(data.refreshToken);
@@ -318,11 +319,26 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn(`Profile not found for user: ${data.userId}`);
-      throw new RpcException('User not found');
+      throw AppErrors.userNotFound(data.userId);
     }
 
     return {
       user: this.toUserInfo(user),
+    };
+  }
+
+  /**
+   * Checks if an email is available for registration.
+   * @param data - Check email request containing the email to check
+   * @returns Response indicating whether the email is available
+   */
+  async checkEmailAvailability(data: CheckEmailRequest): Promise<CheckEmailResponse> {
+    this.logger.log(`Checking email availability: ${data.email}`);
+
+    const existingUser = await this.userRepository.findByEmail(data.email);
+
+    return {
+      available: !existingUser,
     };
   }
 
@@ -377,12 +393,12 @@ export class AuthService {
     const user = await this.userRepository.findByPasswordResetToken(data.token);
 
     if (!user || !user.passwordResetExpires || user.passwordResetExpires < new Date()) {
-      throw new RpcException('Invalid or expired password reset token');
+      throw AppErrors.passwordResetTokenInvalid();
     }
 
     const passwordValidation = this.passwordService.validatePasswordStrength(data.newPassword);
     if (!passwordValidation.valid) {
-      throw new RpcException(passwordValidation.message || 'Invalid password');
+      throw AppErrors.passwordTooWeak(passwordValidation.message);
     }
 
     const hashedPassword = await this.passwordService.hash(data.newPassword);
@@ -416,11 +432,11 @@ export class AuthService {
     const user = await this.userRepository.findById(data.userId);
 
     if (!user) {
-      throw new RpcException('User not found');
+      throw AppErrors.userNotFound(data.userId);
     }
 
     if (user.provider !== AuthProvider.email || !user.password) {
-      throw new RpcException('Password change not available for OAuth users');
+      throw AppErrors.passwordChangeNotAvailable();
     }
 
     const isCurrentPasswordValid = await this.passwordService.compare(
@@ -428,12 +444,12 @@ export class AuthService {
       user.password,
     );
     if (!isCurrentPasswordValid) {
-      throw new RpcException('Current password is incorrect');
+      throw AppErrors.currentPasswordIncorrect();
     }
 
     const passwordValidation = this.passwordService.validatePasswordStrength(data.newPassword);
     if (!passwordValidation.valid) {
-      throw new RpcException(passwordValidation.message || 'Invalid password');
+      throw AppErrors.passwordTooWeak(passwordValidation.message);
     }
 
     const hashedPassword = await this.passwordService.hash(data.newPassword);

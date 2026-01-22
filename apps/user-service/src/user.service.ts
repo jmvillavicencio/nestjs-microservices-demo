@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
 import {
   CreateUserRequest,
   GetUserRequest,
@@ -11,9 +10,9 @@ import {
   DeleteUserResponse,
 } from '@app/proto';
 import { RabbitMQService } from './rabbitmq.service';
-import { USER_EVENTS, UserCreatedEvent, UserUpdatedEvent, UserDeletedEvent } from '@app/common';
+import { USER_EVENTS, UserCreatedEvent, UserUpdatedEvent, UserDeletedEvent, AppErrors } from '@app/common';
 import { PrismaService } from '@app/prisma';
-import { User } from '@prisma/client';
+import { AuthUser, AuthProvider } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 /**
@@ -38,22 +37,23 @@ export class UserService {
   async createUser(data: CreateUserRequest): Promise<UserResponse> {
     this.logger.log(`Creating user with email: ${data.email}`);
 
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.authUser.findUnique({
       where: { email: data.email },
     });
 
     if (existingUser) {
       this.logger.warn(`User creation failed: email ${data.email} already exists`);
-      throw new RpcException('User with this email already exists');
+      throw AppErrors.userAlreadyExists(data.email);
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    const user = await this.prisma.user.create({
+    const user = await this.prisma.authUser.create({
       data: {
         email: data.email,
         name: data.name,
         password: hashedPassword,
+        provider: AuthProvider.email,
       },
     });
 
@@ -79,13 +79,13 @@ export class UserService {
   async getUser(data: GetUserRequest): Promise<UserResponse> {
     this.logger.log(`Fetching user with id: ${data.id}`);
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.authUser.findUnique({
       where: { id: data.id },
     });
 
     if (!user) {
       this.logger.warn(`User not found: ${data.id}`);
-      throw new RpcException('User not found');
+      throw AppErrors.userNotFound(data.id);
     }
 
     return this.toResponse(user);
@@ -104,12 +104,12 @@ export class UserService {
     this.logger.log(`Fetching users - page: ${page}, limit: ${limit}`);
 
     const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
+      this.prisma.authUser.findMany({
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.user.count(),
+      this.prisma.authUser.count(),
     ]);
 
     return {
@@ -127,26 +127,26 @@ export class UserService {
   async updateUser(data: UpdateUserRequest): Promise<UserResponse> {
     this.logger.log(`Updating user: ${data.id}`);
 
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.authUser.findUnique({
       where: { id: data.id },
     });
 
     if (!existingUser) {
       this.logger.warn(`Update failed: user ${data.id} not found`);
-      throw new RpcException('User not found');
+      throw AppErrors.userNotFound(data.id);
     }
 
     if (data.email && data.email !== existingUser.email) {
-      const emailInUse = await this.prisma.user.findUnique({
+      const emailInUse = await this.prisma.authUser.findUnique({
         where: { email: data.email },
       });
       if (emailInUse) {
         this.logger.warn(`Update failed: email ${data.email} already in use`);
-        throw new RpcException('Email already in use');
+        throw AppErrors.emailAlreadyInUse(data.email);
       }
     }
 
-    const user = await this.prisma.user.update({
+    const user = await this.prisma.authUser.update({
       where: { id: data.id },
       data: {
         ...(data.email && { email: data.email }),
@@ -176,16 +176,16 @@ export class UserService {
   async deleteUser(data: DeleteUserRequest): Promise<DeleteUserResponse> {
     this.logger.log(`Deleting user: ${data.id}`);
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.authUser.findUnique({
       where: { id: data.id },
     });
 
     if (!user) {
       this.logger.warn(`Delete failed: user ${data.id} not found`);
-      throw new RpcException('User not found');
+      throw AppErrors.userNotFound(data.id);
     }
 
-    await this.prisma.user.delete({
+    await this.prisma.authUser.delete({
       where: { id: data.id },
     });
 
@@ -201,11 +201,11 @@ export class UserService {
   }
 
   /**
-   * Converts a User entity to a UserResponse DTO.
-   * @param user - The User entity from the database
+   * Converts an AuthUser entity to a UserResponse DTO.
+   * @param user - The AuthUser entity from the database
    * @returns The formatted user response
    */
-  private toResponse(user: User): UserResponse {
+  private toResponse(user: AuthUser): UserResponse {
     return {
       id: user.id,
       email: user.email,

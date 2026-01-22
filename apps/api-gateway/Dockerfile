@@ -2,19 +2,21 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy libs first (needed for build)
+# Copy all source files first
 COPY libs ./libs
 COPY proto ./proto
+COPY apps/api-gateway ./apps/api-gateway
 
-# Copy app package.json and install
+# Install dependencies for libs
+WORKDIR /app/libs/common
+RUN npm install --ignore-scripts
+
+WORKDIR /app/libs/proto
+RUN npm install --ignore-scripts
+
+# Install app dependencies
 WORKDIR /app/apps/api-gateway
-COPY apps/api-gateway/package*.json ./
-COPY apps/api-gateway/tsconfig.json ./
-COPY apps/api-gateway/nest-cli.json ./
 RUN npm install
-
-# Copy source code
-COPY apps/api-gateway/src ./src
 
 # Build the application
 RUN npm run build

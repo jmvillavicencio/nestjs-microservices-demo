@@ -25,5 +25,6 @@
       "@app/prisma": ["../../libs/prisma/src"],
       "@app/prisma/*": ["../../libs/prisma/src/*"]
     }
-  }
+  },
+  "exclude": ["**/*.spec.ts", "**/*.test.ts"]
 }

@@ -73,7 +73,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       this.refreshToken.deleteMany(),
       this.payment.deleteMany(),
       this.authUser.deleteMany(),
-      this.user.deleteMany(),
     ]);
 
     this.logger.log('Database cleaned successfully');

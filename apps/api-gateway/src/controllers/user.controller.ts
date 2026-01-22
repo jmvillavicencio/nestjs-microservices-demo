@@ -9,8 +9,6 @@ import {
   Query,
   Inject,
   OnModuleInit,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
@@ -43,17 +41,7 @@ export class UserController implements OnModuleInit {
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   @ApiResponse({ status: 409, description: 'User with this email already exists' })
   async createUser(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    try {
-      return await firstValueFrom(this.userService.createUser(createUserDto));
-    } catch (error: any) {
-      if (error.message?.includes('already exists')) {
-        throw new HttpException(error.message, HttpStatus.CONFLICT);
-      }
-      throw new HttpException(
-        error.message || 'Failed to create user',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(this.userService.createUser(createUserDto));
   }
 
   @Get()
@@ -65,16 +53,9 @@ export class UserController implements OnModuleInit {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ): Promise<UsersListResponseDto> {
-    try {
-      return await firstValueFrom(
-        this.userService.getUsers({ page: Number(page), limit: Number(limit) }),
-      );
-    } catch (error: any) {
-      throw new HttpException(
-        error.message || 'Failed to fetch users',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(
+      this.userService.getUsers({ page: Number(page), limit: Number(limit) }),
+    );
   }
 
   @Get(':id')
@@ -82,17 +63,7 @@ export class UserController implements OnModuleInit {
   @ApiResponse({ status: 200, description: 'User retrieved successfully', type: UserResponseDto })
   @ApiResponse({ status: 404, description: 'User not found' })
   async getUser(@Param('id') id: string): Promise<UserResponseDto> {
-    try {
-      return await firstValueFrom(this.userService.getUser({ id }));
-    } catch (error: any) {
-      if (error.message?.includes('not found')) {
-        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-      }
-      throw new HttpException(
-        error.message || 'Failed to fetch user',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(this.userService.getUser({ id }));
   }
 
   @Put(':id')
@@ -104,22 +75,9 @@ export class UserController implements OnModuleInit {
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    try {
-      return await firstValueFrom(
-        this.userService.updateUser({ id, ...updateUserDto }),
-      );
-    } catch (error: any) {
-      if (error.message?.includes('not found')) {
-        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-      }
-      if (error.message?.includes('already in use')) {
-        throw new HttpException(error.message, HttpStatus.CONFLICT);
-      }
-      throw new HttpException(
-        error.message || 'Failed to update user',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(
+      this.userService.updateUser({ id, ...updateUserDto }),
+    );
   }
 
   @Delete(':id')
@@ -127,16 +85,6 @@ export class UserController implements OnModuleInit {
   @ApiResponse({ status: 200, description: 'User deleted successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async deleteUser(@Param('id') id: string): Promise<{ success: boolean }> {
-    try {
-      return await firstValueFrom(this.userService.deleteUser({ id }));
-    } catch (error: any) {
-      if (error.message?.includes('not found')) {
-        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-      }
-      throw new HttpException(
-        error.message || 'Failed to delete user',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(this.userService.deleteUser({ id }));
   }
 }

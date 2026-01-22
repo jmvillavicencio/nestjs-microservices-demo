@@ -10,6 +10,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@nestjs/common": "^10.3.0",
     "@prisma/client": "^5.7.0"
   },
   "devDependencies": {

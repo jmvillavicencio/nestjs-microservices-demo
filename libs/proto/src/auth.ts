@@ -101,6 +101,15 @@ export interface GetProfileResponse {
   user: UserInfo;
 }
 
+// Email Availability
+export interface CheckEmailRequest {
+  email: string;
+}
+
+export interface CheckEmailResponse {
+  available: boolean;
+}
+
 export interface AuthServiceClient {
   register(request: RegisterRequest): any;
   login(request: LoginRequest): any;
@@ -113,6 +122,7 @@ export interface AuthServiceClient {
   resetPassword(request: ResetPasswordRequest): any;
   changePassword(request: ChangePasswordRequest): any;
   getProfile(request: GetProfileRequest): any;
+  checkEmailAvailability(request: CheckEmailRequest): any;
 }
 
 export const AUTH_SERVICE_NAME = 'AuthService';

@@ -98,6 +98,13 @@ export class ChangePasswordDto {
   newPassword: string;
 }
 
+export class CheckEmailDto {
+  @ApiProperty({ example: 'john@example.com', description: 'Email address to check availability' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
 // Response DTOs
 export class UserInfoDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
@@ -136,4 +143,9 @@ export class MessageResponseDto {
 
   @ApiProperty({ example: 'Operation completed successfully' })
   message: string;
+}
+
+export class CheckEmailResponseDto {
+  @ApiProperty({ example: true, description: 'Whether the email is available for registration' })
+  available: boolean;
 }

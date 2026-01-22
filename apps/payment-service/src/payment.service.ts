@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
 import {
   CreatePaymentRequest,
   GetPaymentRequest,
@@ -14,6 +13,7 @@ import {
   PaymentCreatedEvent,
   PaymentCompletedEvent,
   PaymentRefundedEvent,
+  AppErrors,
 } from '@app/common';
 import { PrismaService } from '@app/prisma';
 import { Payment, PaymentStatus } from '@prisma/client';
@@ -139,7 +139,7 @@ export class PaymentService {
 
     if (!payment) {
       this.logger.warn(`Payment not found: ${data.id}`);
-      throw new RpcException('Payment not found');
+      throw AppErrors.paymentNotFound(data.id);
     }
 
     return this.toResponse(payment);
@@ -190,17 +190,17 @@ export class PaymentService {
 
     if (!payment) {
       this.logger.warn(`Refund failed: payment ${data.paymentId} not found`);
-      throw new RpcException('Payment not found');
+      throw AppErrors.paymentNotFound(data.paymentId);
     }
 
     if (payment.status !== PaymentStatus.completed) {
       this.logger.warn(`Refund failed: payment ${data.paymentId} is not completed`);
-      throw new RpcException('Can only refund completed payments');
+      throw AppErrors.refundNotAllowed();
     }
 
     if (data.amount > payment.amount) {
       this.logger.warn(`Refund failed: amount ${data.amount} exceeds payment amount ${payment.amount}`);
-      throw new RpcException('Refund amount cannot exceed payment amount');
+      throw AppErrors.refundAmountExceedsPayment(data.amount, payment.amount);
     }
 
     const updatedPayment = await this.prisma.payment.update({

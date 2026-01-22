@@ -13,6 +13,7 @@ import {
   ResetPasswordRequest,
   ChangePasswordRequest,
   GetProfileRequest,
+  CheckEmailRequest,
   AuthResponse,
   ValidateTokenResponse,
   LogoutResponse,
@@ -20,6 +21,7 @@ import {
   ResetPasswordResponse,
   ChangePasswordResponse,
   GetProfileResponse,
+  CheckEmailResponse,
   AUTH_SERVICE_NAME,
 } from '@app/proto';
 
@@ -80,5 +82,10 @@ export class AuthController {
   @GrpcMethod(AUTH_SERVICE_NAME, 'GetProfile')
   async getProfile(data: GetProfileRequest): Promise<GetProfileResponse> {
     return this.authService.getProfile(data);
+  }
+
+  @GrpcMethod(AUTH_SERVICE_NAME, 'CheckEmailAvailability')
+  async checkEmailAvailability(data: CheckEmailRequest): Promise<CheckEmailResponse> {
+    return this.authService.checkEmailAvailability(data);
   }
 }

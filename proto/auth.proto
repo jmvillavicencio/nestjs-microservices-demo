@@ -20,6 +20,12 @@ service AuthService {
   rpc ForgotPassword (ForgotPasswordRequest) returns (ForgotPasswordResponse);
   rpc ResetPassword (ResetPasswordRequest) returns (ResetPasswordResponse);
   rpc ChangePassword (ChangePasswordRequest) returns (ChangePasswordResponse);
+
+  // Email Availability
+  rpc CheckEmailAvailability (CheckEmailRequest) returns (CheckEmailResponse);
+
+  // Profile
+  rpc GetProfile (GetProfileRequest) returns (GetProfileResponse);
 }
 
 // Registration & Login
@@ -114,4 +120,20 @@ message ResetPasswordResponse {
 message ChangePasswordResponse {
   bool success = 1;
   string message = 2;
+}
+
+message CheckEmailRequest {
+  string email = 1;
+}
+
+message CheckEmailResponse {
+  bool available = 1;
+}
+
+message GetProfileRequest {
+  string userId = 1;
+}
+
+message GetProfileResponse {
+  UserInfo user = 1;
 }

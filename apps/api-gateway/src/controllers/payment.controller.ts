@@ -7,8 +7,6 @@ import {
   Query,
   Inject,
   OnModuleInit,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
@@ -40,19 +38,12 @@ export class PaymentController implements OnModuleInit {
   @ApiResponse({ status: 201, description: 'Payment created successfully', type: PaymentResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   async createPayment(@Body() createPaymentDto: CreatePaymentDto): Promise<PaymentResponseDto> {
-    try {
-      return await firstValueFrom(
-        this.paymentService.createPayment({
-          ...createPaymentDto,
-          currency: createPaymentDto.currency || 'USD',
-        }),
-      );
-    } catch (error: any) {
-      throw new HttpException(
-        error.message || 'Failed to create payment',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(
+      this.paymentService.createPayment({
+        ...createPaymentDto,
+        currency: createPaymentDto.currency || 'USD',
+      }),
+    );
   }
 
   @Get(':id')
@@ -60,17 +51,7 @@ export class PaymentController implements OnModuleInit {
   @ApiResponse({ status: 200, description: 'Payment retrieved successfully', type: PaymentResponseDto })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   async getPayment(@Param('id') id: string): Promise<PaymentResponseDto> {
-    try {
-      return await firstValueFrom(this.paymentService.getPayment({ id }));
-    } catch (error: any) {
-      if (error.message?.includes('not found')) {
-        throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
-      }
-      throw new HttpException(
-        error.message || 'Failed to fetch payment',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(this.paymentService.getPayment({ id }));
   }
 
   @Get('user/:userId')
@@ -83,20 +64,13 @@ export class PaymentController implements OnModuleInit {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ): Promise<PaymentsListResponseDto> {
-    try {
-      return await firstValueFrom(
-        this.paymentService.getPaymentsByUser({
-          userId,
-          page: Number(page),
-          limit: Number(limit),
-        }),
-      );
-    } catch (error: any) {
-      throw new HttpException(
-        error.message || 'Failed to fetch payments',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(
+      this.paymentService.getPaymentsByUser({
+        userId,
+        page: Number(page),
+        limit: Number(limit),
+      }),
+    );
   }
 
   @Post(':id/refund')
@@ -108,25 +82,12 @@ export class PaymentController implements OnModuleInit {
     @Param('id') id: string,
     @Body() refundDto: ProcessRefundDto,
   ): Promise<PaymentResponseDto> {
-    try {
-      return await firstValueFrom(
-        this.paymentService.processRefund({
-          paymentId: id,
-          amount: refundDto.amount,
-          reason: refundDto.reason,
-        }),
-      );
-    } catch (error: any) {
-      if (error.message?.includes('not found')) {
-        throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
-      }
-      if (error.message?.includes('Cannot') || error.message?.includes('exceed')) {
-        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
-      }
-      throw new HttpException(
-        error.message || 'Failed to process refund',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return await firstValueFrom(
+      this.paymentService.processRefund({
+        paymentId: id,
+        amount: refundDto.amount,
+        reason: refundDto.reason,
+      }),
+    );
   }
 }
